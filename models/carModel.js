@@ -11,7 +11,7 @@ const carSchema = new mongoose.Schema({
     mileage: String,
     color: String,
     price: String,
-    images: [String], // store Cloudinary image URLs
+    images: [String], 
 });
 
 const Car = mongoose.model('Car', carSchema);

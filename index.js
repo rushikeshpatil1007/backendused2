@@ -1,35 +1,59 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const multer = require('multer');
-const cloudinary = require('cloudinary').v2;
+
 const dotenv = require('dotenv');
 const cors = require('cors');
-const fs = require('fs'); // Import the 'fs' module
+const bodyParser = require('body-parser')
+
 dotenv.config();
 const Car = require('./models/carModel')
-
 
 const app = express();
 const port = process.env.PORT || 5000;
 app.use(cors());
 
+
+
+app.use(bodyParser.json({ limit: '50mb' })); // Adjust the limit as needed
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI);
+mongoose.connect("mongodb+srv://user:user@cluster0.hevjgko.mongodb.net/?retryWrites=true&w=majority");
 const db = mongoose.connection;
 
 db.on('error', (error) => console.error('MongoDB connection error:', error));
 db.once('open', () => console.log('Connected to MongoDB'));
 
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
-// Set up a storage engine for multer to upload files to Cloudinary
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+//addcars route
+app.post('/api/upload', async (req, res) => {
+  try {
+    const { name, images, carnumber, km, owners, fueltype, registrationYear, rto, color, mileage } = req.body;
+
+    // Create a new instance of the Car model
+    const newCar = new Car({
+      name,
+      images,
+      carnumber,
+      km,
+      owners,
+      fueltype,
+      registrationYear,
+      rto,
+      color,
+      mileage
+    });
+
+    // Save the new car to the database
+    const savedCar = await newCar.save();
+
+    // Respond with the saved car details
+    res.json(savedCar);
+    
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error uploading car details' });
+  }
+});
 
 
 // get all cars data
@@ -58,46 +82,7 @@ app.get('/api/cars/:id', async (req, res) => {
     res.status(500).json({ error: 'An error occurred while fetching car details.' });
   }
 });
-// Create an endpoint to handle the car form submission
-app.post('/api/addCar', upload.array('images', 15), async (req, res) => {
-  try {
-    const carDetails = {
-      name: req.body.name,
-      km: req.body.km,
-      carnumber: req.body.carnumber,
-      owners: req.body.owners,
-      fuelType: req.body.fuelType,
-      registrationYear: req.body.registrationYear,
-      mileage: req.body.mileage,
-      rto: req.body.rto,
-      color: req.body.color,
-      price: req.body.price,
-      images: [],
-    };
 
-    // Upload images to Cloudinary
-    for (const file of req.files) {
-      // Temporarily save the file to the server's local file system
-      const tempFilePath = `/${file.originalname}`;
-      fs.writeFileSync(tempFilePath, file.buffer);
-
-      const result = await cloudinary.uploader.upload(tempFilePath);
-      carDetails.images.push(result.secure_url);
-
-      // Delete the temporary file after uploading to Cloudinary
-      fs.unlinkSync(tempFilePath);
-    }
-
-    // Create a new car document in MongoDB
-    const newCar = new Car(carDetails);
-    const savedCar = await newCar.save();
-
-    res.json(savedCar);
-  } catch (error) {
-    console.error('Error uploading car details and images.', error);
-    res.status(500).json({ error: 'An error occurred while processing your request.' });
-  }
-});
 
 
 // get all cars for admin 
@@ -125,3 +110,4 @@ app.delete('/api/allcars/:id', async (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
+
