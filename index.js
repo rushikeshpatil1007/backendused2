@@ -17,7 +17,7 @@ app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' })); // Adjust the limit as needed
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 // Connect to MongoDB
-mongoose.connect("mongodb+srv://user:user@cluster0.hevjgko.mongodb.net/?retryWrites=true&w=majority");
+mongoose.connect(process.env.MONGODB_URI);
 const db = mongoose.connection;
 
 db.on('error', (error) => console.error('MongoDB connection error:', error));
@@ -119,8 +119,8 @@ const sendOTP = async (email, otp) => {
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      user: 'pawarmoters@gmail.com',
-      pass: 'wgew gnqj ttoj fegf',
+      user: process.env.EMAILSEND,
+      pass: process.env.PASSWORDS,
     },
   });
 
