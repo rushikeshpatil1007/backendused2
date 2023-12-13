@@ -1,13 +1,13 @@
 const express = require('express');
 const mongoose = require('mongoose');
-
+const nodemailer = require('nodemailer');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const bodyParser = require('body-parser')
 
 dotenv.config();
 const Car = require('./models/carModel')
-
+const User = require('./models/User')
 const app = express();
 const port = process.env.PORT || 5000;
 app.use(cors());
@@ -27,7 +27,7 @@ db.once('open', () => console.log('Connected to MongoDB'));
 //addcars route
 app.post('/api/upload', async (req, res) => {
   try {
-    const { name, images, carnumber, km, owners, fueltype, registrationYear, rto, color, mileage } = req.body;
+    const { name, images, carnumber, km, owners, fuelType, registrationYear, rto, color, mileage, price } = req.body;
 
     // Create a new instance of the Car model
     const newCar = new Car({
@@ -36,7 +36,8 @@ app.post('/api/upload', async (req, res) => {
       carnumber,
       km,
       owners,
-      fueltype,
+      fuelType,
+      price,
       registrationYear,
       rto,
       color,
@@ -48,7 +49,7 @@ app.post('/api/upload', async (req, res) => {
 
     // Respond with the saved car details
     res.json(savedCar);
-    
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error uploading car details' });
@@ -105,6 +106,127 @@ app.delete('/api/allcars/:id', async (req, res) => {
     res.status(500).send('Internal Server Error');
   }
 });
+
+
+// using send otp check for 
+
+const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+// Send OTP to the provided email
+const sendOTP = async (email, otp) => {
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: 'pawarmoters@gmail.com',
+      pass: 'wgew gnqj ttoj fegf',
+    },
+  });
+
+  const mailOptions = {
+    from: 'patilrushikesh1007@gmail.com',
+    to: email,
+    subject: 'Verification OTP',
+    text: `Your OTP is ${otp}.`,
+  };
+
+  try {
+
+    await transporter.sendMail(mailOptions);
+
+  } catch (error) {
+    console.error('Error sending OTP email:', error);
+    throw error;
+  }
+};
+
+
+
+
+// Route to send OTP
+app.post('/send-otp', async (req, res) => {
+  const { email } = req.body;
+
+  const user = await User.findOne({ email });
+
+  if (user) {
+    const otp = generateOTP();
+    user.otp = otp;
+    await user.save();
+
+    try {
+      await sendOTP(email, otp);
+      res.json({ success: true, message: 'OTP sent successfully.' });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to send OTP.' });
+    }
+  } else {
+    res.status(404).json({ success: false, message: 'User not found.' });
+  }
+});
+
+
+// Route to verify OTP
+app.post('/verify-otp', async (req, res) => {
+  const { email, otp } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+
+    if (user && user.otp === otp) {
+      // Clear the OTP after successful verification
+      user.otp = '';
+      await user.save();
+
+      res.json({ success: true, message: 'OTP verification successful.' });
+    } else {
+      res.status(401).json({ success: false, message: 'OTP verification failed. Invalid OTP.' });
+    }
+  } catch (error) {
+    console.error('Error verifying OTP:', error);
+    res.status(500).json({ success: false, message: 'Internal server error.' });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 app.listen(port, () => {
